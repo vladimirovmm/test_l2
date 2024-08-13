@@ -5,6 +5,7 @@ name = "test_l2"
 version = "0.1.0"
 
 [dependencies]
+async-once-cell = "0.5.3"
 eyre = "0.6.12"
 jwt-jsonrpsee = {git = "https://github.com/pontem-network/jwt-jsonrpsee"}
 rand = "0.8.5"

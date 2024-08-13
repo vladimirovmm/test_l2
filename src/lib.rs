@@ -1,7 +1,8 @@
 #![cfg(test)]
 
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, str::FromStr};
 
+use async_once_cell::OnceCell;
 use eyre::{Context, ContextCompat, Result};
 use jwt_jsonrpsee::JwtSecret;
 use rand::random;
@@ -11,6 +12,29 @@ use tracing_test::traced_test;
 
 // const URL: &str = "http://localhost:9042";
 const JWT_PATH: &str = "engine.jwt";
+
+static JWT: OnceCell<JwtSecret> = OnceCell::new();
+
+async fn get_jwt() -> JwtSecret {
+    *JWT.get_or_init(async {
+        JwtSecret::from_str(
+            &fs::read_to_string(JWT_PATH)
+                .with_context(|| format!("При чтении JWT {JWT_PATH:?} произошла ошибка"))
+                .unwrap(),
+        )
+        .context("Неудолось декодировать JWT")
+        .unwrap()
+    })
+    .await
+}
+
+#[traced_test]
+#[tokio::test]
+async fn test_mv_deposite() -> Result<()> {
+    let _jwt = get_jwt().await;
+    //
+    Ok(())
+}
 
 /// Добавить ключ в конфиг. По умолчанию он генерируется при запуске
 #[ignore]
