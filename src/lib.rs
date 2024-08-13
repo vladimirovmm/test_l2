@@ -3,9 +3,11 @@
 use std::{fs, path::PathBuf, str::FromStr, time::Duration};
 
 use async_once_cell::OnceCell;
-use eyre::{Context, ContextCompat, Result};
+use eyre::{bail, Context, ContextCompat, Result};
 use headers::authorization::{Bearer, Credentials};
-use jwt_jsonrpsee::{Claims, JwtSecret};
+use jsonrpsee::http_client::HttpClientBuilder;
+use jsonrpsee::{core::client::ClientT, rpc_params};
+use jwt_jsonrpsee::{Claims, ClientLayer, JwtSecret};
 use rand::random;
 use reqwest::{header::HeaderValue, StatusCode};
 use serde_yaml::Value;
@@ -121,6 +123,43 @@ async fn test_token_lifetime_has_expired() -> Result<()> {
     Ok(())
 }
 
+#[test]
+async fn test_jsonrpsee() -> Result<()> {
+    let jwt = get_jwt().await;
+
+    fn unwrap_call_auth<T>(result: Result<T, jsonrpsee::core::ClientError>) -> Result<bool> {
+        use jsonrpsee::core::ClientError::{Call, Transport};
+
+        let result = match result.err().context("Ожидалась ошибка")? {
+            Call(_) => true,
+            Transport(err) => !err.to_string().contains("401"),
+            err => bail!("Для этого типи нет оброботчика. {err}"),
+        };
+        Ok(result)
+    }
+
+    // without JWT
+    let client = HttpClientBuilder::new().build(URL).unwrap();
+    let response = client.request::<String, _>("hello", rpc_params![]).await;
+    assert!(
+        !unwrap_call_auth(response)?,
+        "Сервис не должен принемать без токена"
+    );
+
+    // with JWT
+    let client = HttpClientBuilder::new()
+        .set_http_middleware(tower::ServiceBuilder::new().layer(ClientLayer::new(jwt)))
+        .build(URL)
+        .unwrap();
+
+    let response = client.request::<String, _>("hello", rpc_params![]).await;
+    assert!(
+        unwrap_call_auth(response)?,
+        "Токен был отправлен и был отклонён"
+    );
+
+    Ok(())
+}
 /// Добавить ключ в конфиг. По умолчанию он генерируется при запуске
 #[ignore]
 #[traced_test]
