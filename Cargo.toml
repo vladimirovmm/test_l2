@@ -1,0 +1,49 @@
+[package]
+description = "Для ручного тестирования l2 нод."
+edition = "2021"
+name = "test_l2"
+version = "0.1.0"
+
+[dependencies]
+eyre = "0.6.12"
+jwt-jsonrpsee = {git = "https://github.com/pontem-network/jwt-jsonrpsee"}
+rand = "0.8.5"
+reqwest = {version = "0.12.5"}
+tokio = {version = "1.36.0", features = ["rt-multi-thread", "macros"]}
+#
+serde_yaml = "0.9.34"
+#
+tracing = "0.1.34"
+tracing-subscriber = {version = "0.3.17", features = ["json", "env-filter"]}
+tracing-test = "0.2.4"
+
+[lints.clippy]
+branches_sharing_code = "warn"
+clear_with_drain = "warn"
+dbg_macro = "warn"
+derive_partial_eq_without_eq = "warn"
+empty_line_after_outer_attr = "warn"
+equatable_if_let = "warn"
+imprecise_flops = "warn"
+iter_on_empty_collections = "warn"
+iter_with_drain = "warn"
+large_stack_frames = "warn"
+manual_clamp = "warn"
+mutex_integer = "warn"
+needless_pass_by_ref_mut = "warn"
+nonstandard_macro_braces = "warn"
+or_fun_call = "warn"
+path_buf_push_overwrite = "warn"
+read_zero_byte_vec = "warn"
+redundant_clone = "warn"
+suboptimal_flops = "warn"
+suspicious_operation_groupings = "warn"
+trailing_empty_array = "warn"
+trait_duplication_in_bounds = "warn"
+transmute_undefined_repr = "warn"
+trivial_regex = "warn"
+tuple_array_conversions = "warn"
+uninhabited_references = "warn"
+unused_peekable = "warn"
+unused_rounding = "warn"
+useless_let_if_seq = "warn"

@@ -1,0 +1,41 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "make",
+			"args": [
+				"build"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"clear": true
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+		},
+		{
+			"label": "fix",
+			"type": "shell",
+			"command": "make",
+			"args": [
+				"fix"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"clear": true
+			},
+			"problemMatcher": [
+				"$rustc"
+			],
+		},
+	]
+}
