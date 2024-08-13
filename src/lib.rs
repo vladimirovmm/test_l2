@@ -7,10 +7,11 @@ use eyre::{Context, ContextCompat, Result};
 use jwt_jsonrpsee::JwtSecret;
 use rand::random;
 use serde_yaml::Value;
+use tokio::test;
 use tracing::{debug, info};
 use tracing_test::traced_test;
 
-// const URL: &str = "http://localhost:9042";
+const URL: &str = "http://localhost:9042";
 const JWT_PATH: &str = "engine.jwt";
 
 static JWT: OnceCell<JwtSecret> = OnceCell::new();
@@ -30,9 +31,56 @@ async fn get_jwt() -> JwtSecret {
 
 #[traced_test]
 #[tokio::test]
-async fn test_mv_deposite() -> Result<()> {
+async fn test_deposite() -> Result<()> {
     let _jwt = get_jwt().await;
     //
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_unath() {
+    assert_eq!(
+        reqwest::get(URL).await.unwrap().status(),
+        reqwest::StatusCode::UNAUTHORIZED,
+        "Запросы без токена не должны приниматься"
+    );
+}
+
+#[tokio::test]
+async fn test_auth_reqwest() -> Result<()> {
+    let auth_head = get_jwt().await.to_bearer()?.to_str()?.to_string();
+    let status = reqwest::Client::new()
+        .get(URL)
+        .header(reqwest::header::AUTHORIZATION, auth_head)
+        .send()
+        .await?
+        .status();
+
+    assert_eq!(
+        status,
+        reqwest::StatusCode::METHOD_NOT_ALLOWED,
+        "Ожидался валидный токен"
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn test_invalid_jwt() -> Result<()> {
+    let auth_head = JwtSecret::new(random()).to_bearer()?.to_str()?.to_string();
+    let status = reqwest::Client::new()
+        .get(URL)
+        .header(reqwest::header::AUTHORIZATION, auth_head)
+        .send()
+        .await?
+        .status();
+
+    assert_eq!(
+        status,
+        reqwest::StatusCode::UNAUTHORIZED,
+        "Ожидался валидный токен"
+    );
+
     Ok(())
 }
 
@@ -40,7 +88,7 @@ async fn test_mv_deposite() -> Result<()> {
 #[ignore]
 #[traced_test]
 #[tokio::test]
-async fn patch_mv_node_config() -> Result<()> {
+async fn patch_node_config() -> Result<()> {
     const CONFIG_FILE_NAME: &str = "node.yaml";
     const DEFAULT_JWT_PATH: &str = "l2/test-node/engine.jwt";
 
