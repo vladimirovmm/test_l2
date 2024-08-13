@@ -1314,6 +1314,9 @@ version = "0.1.0"
 dependencies = [
  "async-once-cell",
  "eyre",
+ "headers",
+ "hex",
+ "jsonwebtoken",
  "jwt-jsonrpsee",
  "rand",
  "reqwest",

@@ -4,9 +4,12 @@ edition = "2021"
 name = "test_l2"
 version = "0.1.0"
 
-[dependencies]
+[dev-dependencies]
 async-once-cell = "0.5.3"
 eyre = "0.6.12"
+headers = "0.4.0"
+hex = "0.4"
+jsonwebtoken = "9.3.0"
 jwt-jsonrpsee = {git = "https://github.com/pontem-network/jwt-jsonrpsee"}
 rand = "0.8.5"
 reqwest = {version = "0.12.5"}

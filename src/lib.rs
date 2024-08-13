@@ -1,13 +1,15 @@
 #![cfg(test)]
 
-use std::{fs, path::PathBuf, str::FromStr};
+use std::{fs, path::PathBuf, str::FromStr, time::Duration};
 
 use async_once_cell::OnceCell;
 use eyre::{Context, ContextCompat, Result};
-use jwt_jsonrpsee::JwtSecret;
+use headers::authorization::{Bearer, Credentials};
+use jwt_jsonrpsee::{Claims, JwtSecret};
 use rand::random;
+use reqwest::{header::HeaderValue, StatusCode};
 use serde_yaml::Value;
-use tokio::test;
+use tokio::{test, time::sleep};
 use tracing::{debug, info};
 use tracing_test::traced_test;
 
@@ -29,6 +31,16 @@ async fn get_jwt() -> JwtSecret {
     .await
 }
 
+async fn req_status(token: HeaderValue) -> Result<StatusCode> {
+    let status = reqwest::Client::new()
+        .get(URL)
+        .header(reqwest::header::AUTHORIZATION, token)
+        .send()
+        .await?
+        .status();
+    Ok(status)
+}
+
 #[traced_test]
 #[tokio::test]
 async fn test_deposite() -> Result<()> {
@@ -40,7 +52,11 @@ async fn test_deposite() -> Result<()> {
 #[tokio::test]
 async fn test_unath() {
     assert_eq!(
-        reqwest::get(URL).await.unwrap().status(),
+        reqwest::get(URL)
+            .await
+            .with_context(|| format!("Ошибка при обращении на {URL:?}"))
+            .unwrap()
+            .status(),
         reqwest::StatusCode::UNAUTHORIZED,
         "Запросы без токена не должны приниматься"
     );
@@ -48,18 +64,10 @@ async fn test_unath() {
 
 #[tokio::test]
 async fn test_auth_reqwest() -> Result<()> {
-    let auth_head = get_jwt().await.to_bearer()?.to_str()?.to_string();
-    let status = reqwest::Client::new()
-        .get(URL)
-        .header(reqwest::header::AUTHORIZATION, auth_head)
-        .send()
-        .await?
-        .status();
-
     assert_eq!(
-        status,
+        req_status(get_jwt().await.to_bearer()?).await?,
         reqwest::StatusCode::METHOD_NOT_ALLOWED,
-        "Ожидался валидный токен"
+        "Ожидалось что это валидный токен и метода не существует"
     );
 
     Ok(())
@@ -67,18 +75,47 @@ async fn test_auth_reqwest() -> Result<()> {
 
 #[test]
 async fn test_invalid_jwt() -> Result<()> {
-    let auth_head = JwtSecret::new(random()).to_bearer()?.to_str()?.to_string();
-    let status = reqwest::Client::new()
-        .get(URL)
-        .header(reqwest::header::AUTHORIZATION, auth_head)
-        .send()
-        .await?
-        .status();
+    let token = JwtSecret::new(random()).to_bearer()?;
 
     assert_eq!(
-        status,
+        req_status(token).await?,
         reqwest::StatusCode::UNAUTHORIZED,
-        "Ожидался валидный токен"
+        "Был принят невалидный токен"
+    );
+
+    Ok(())
+}
+
+#[test]
+async fn test_token_lifetime_has_expired() -> Result<()> {
+    const CLAIM_EXPIRATION: u64 = 2;
+
+    let jwt = get_jwt().await;
+    let token = {
+        let jwt_as_bytes =
+            hex::decode(jwt.to_string()).context("Не удалось преобразовать в Vec<u8> JWT")?;
+        let claim = jsonwebtoken::encode(
+            &Default::default(),
+            // Expires in 30 secs from now
+            &Claims::with_expiration(CLAIM_EXPIRATION),
+            &jsonwebtoken::EncodingKey::from_secret(&jwt_as_bytes),
+        )
+        .context("Неудалось создать claim")?;
+
+        HeaderValue::from_str(&format!("{} {claim}", Bearer::SCHEME))?
+    };
+
+    assert_eq!(
+        req_status(token.clone()).await?,
+        reqwest::StatusCode::METHOD_NOT_ALLOWED,
+        "Ожидалось что токен валидный и метода не существует"
+    );
+    sleep(Duration::from_secs(CLAIM_EXPIRATION + 1)).await;
+
+    assert_eq!(
+        req_status(token).await?,
+        reqwest::StatusCode::UNAUTHORIZED,
+        "Токен должен был истечь"
     );
 
     Ok(())
