@@ -42,7 +42,7 @@ async fn req_status(token: HeaderValue) -> Result<StatusCode> {
 }
 
 #[tokio::test]
-async fn test_unath() {
+async fn test_unauth() {
     assert_eq!(
         reqwest::get(URL)
             .await
