@@ -13,6 +13,7 @@ use tracing_test::traced_test;
 
 use crate::jwt::get_jwt;
 
+pub(crate) mod aptos;
 pub(crate) mod jwt;
 
 type Slot = usize;
@@ -103,15 +104,15 @@ async fn test_deposite() -> Result<()> {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct RequestEngine {
-    parent_l2_slot: Slot,
-    max_slots: Slot,
-    l1_slots: Vec<RequestDeposit>,
+    parent_payload: Slot,
+    max_payload_size: Slot,
+    events: Vec<RequestDeposit>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 struct RequestDeposit {
     slot: Slot,
-    deposits: Vec<TxDeposit>,
+    events: Vec<TxDeposit>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -7,6 +7,7 @@ version = "0.1.0"
 [dev-dependencies]
 async-once-cell = "0.5.3"
 eyre = "0.6.12"
+futures = "0.3.30"
 headers = "0.4.0"
 hex = "0.4"
 jsonrpsee = {version = "0.24", features = ["http-client", "macros"]}
@@ -14,12 +15,13 @@ jsonwebtoken = "9.3.0"
 jwt-jsonrpsee = {git = "https://github.com/pontem-network/jwt-jsonrpsee"}
 lazy_static = "1.5.0"
 rand = "0.8.5"
-reqwest = {version = "0.12.5"}
+rayon = "1.10.0"
+reqwest = {version = "0.12.5", features = ["json"]}
 tokio = {version = "1.36.0", features = ["rt-multi-thread", "macros"]}
 tower = {version = "0.4.13"}
 #
 serde = "1.0.207"
-serde_json = "1.0.124"
+serde_json = {version = "1.0.124"}
 serde_yaml = "0.9.34"
 #
 tracing = "0.1.34"
