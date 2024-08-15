@@ -9,7 +9,7 @@ use jwt_jsonrpsee::ClientLayer;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, instrument};
 use tracing_test::traced_test;
 
 use crate::jwt::get_jwt;
@@ -28,6 +28,19 @@ async fn next_slot() -> Slot {
     *slot
 }
 
+#[instrument(level = "debug", skip(client))]
+async fn engine_l2info_v1<T>(client: &T) -> Result<Value>
+where
+    T: ClientT,
+{
+    debug!("Получинеие информации о текущем состоянии ноды. engine_l2Info_v1: request");
+
+    client
+        .request::<Value, _>("engine_l2Info_v1", rpc_params![])
+        .await
+        .context("запрос на получения статуса ноды")
+}
+
 #[traced_test]
 #[tokio::test]
 async fn test_deposite() -> Result<()> {
@@ -37,12 +50,7 @@ async fn test_deposite() -> Result<()> {
         .build(URL)
         .context("Ошибка при попытки создать клиента для service-engine")?;
 
-    debug!("Получинеие информации о текущем состоянии ноды");
-    let response = client
-        .request::<Value, _>("engine_l2Info_v1", rpc_params![])
-        .await
-        .context("запрос на депозит")?;
-    debug!("response: {response:#?}");
+    debug!("response: {:#?}", engine_l2info_v1(&client).await?);
 
     debug!("Запрос с пустым массивом событий");
     client
@@ -113,12 +121,7 @@ async fn test_deposite() -> Result<()> {
         .context("запрос на депозит")?;
     debug!("response: {response:#?}");
 
-    debug!("engine_l2Info_v1: request");
-    let response = client
-        .request::<Value, _>("engine_l2Info_v1", rpc_params![])
-        .await
-        .context("запрос на депозит")?;
-    debug!("response: {response:#?}");
+    debug!("response: {:#?}", engine_l2info_v1(&client).await?);
 
     Ok(())
 }
