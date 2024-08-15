@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use aptos::APTOS_ACCOUNTS;
 use eyre::{Context, Result};
-use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder, rpc_params};
+use jsonrpsee::http_client::HttpClientBuilder;
 use jwt_jsonrpsee::ClientLayer;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -42,69 +42,57 @@ async fn test_deposite() -> Result<()> {
 
     debug!("Запрос с пустым массивом событий");
     client
-        .request::<Value, _>(
-            "engine_applyAttributes_v1",
-            rpc_params!(json!({
-                "parent_payload": 0,
-                "events": [],
-                "max_payload_size": 1001,
-            })),
-        )
+        .engine_applyattributes_v1(json!({
+            "parent_payload": 0,
+            "events": [],
+            "max_payload_size": 1001,
+        }))
         .await
         .context("Пустой массив событий")
         .unwrap();
 
     debug!("Запрос с пустым массивом событий слота");
     client
-        .request::<Value, _>(
-            "engine_applyAttributes_v1",
-            rpc_params!(json!({
-                "parent_payload": 0,
-                "events": [
-                    {
-                        "slot": next_slot().await,
-                        "events":[]
-                    }
-                ],
-                "max_payload_size": 1001,
-            })),
-        )
+        .engine_applyattributes_v1(json!({
+            "parent_payload": 0,
+            "events": [
+                {
+                    "slot": next_slot().await,
+                    "events":[]
+                }
+            ],
+            "max_payload_size": 1001,
+        }))
         .await
         .context("Пустой массив событий")
         .unwrap();
 
     debug!("Пример запроса через json");
-    let response: Value = client
-        .request::<Value, _>(
-            "engine_applyAttributes_v1",
-            rpc_params!(json!({
-                "parent_payload": 1,
-                "max_payload_size": 1001,
-                "events": [
-                    {
-                        "slot": next_slot().await,
-                        "events":[
-                            {
-                                "Deposit":{
-                                    "account":"0x0000000000000000000000000000000000000000000000000000000000000001",
-                                    "amount":1
-                                }
+
+    let response: Value = client.engine_applyattributes_v1(json!({
+            "parent_payload": 1,
+            "max_payload_size": 1001,
+            "events": [
+                {
+                    "slot": next_slot().await,
+                    "events":[
+                        {
+                            "Deposit":{
+                                "account":"0x0000000000000000000000000000000000000000000000000000000000000001",
+                                "amount":1
                             }
-                        ]
-                    }
-                ],
-            })),
-        )
+                        }
+                    ]
+                }
+            ],
+        }))
         .await
         .context("запрос на депозит")?;
     debug!("response: {response:#?}");
 
     debug!("Запрос на пополнение нескольких аккаунтов (engine_applyAttributes_v1)");
     let response: Value = client
-        .request::<Value, _>(
-            "engine_applyAttributes_v1",
-            rpc_params!(RequestEngine::all().await),
-        )
+        .engine_applyattributes_v1(RequestEngine::all().await)
         .await
         .context("запрос на депозит")?;
     debug!("response: {response:#?}");
