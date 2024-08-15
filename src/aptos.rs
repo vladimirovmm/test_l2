@@ -25,7 +25,7 @@ use tracing_test::traced_test;
 //     account: 04228e4f14a6f2f8d202f1bbe151aaadf1105d1fc3c9c0dc1804f5773c34d62b
 //     rest_url: "http://localhost:8080"
 //     faucet_url: "http://localhost:8081"
-const APTOS_ACCOUNTS: [&str; 3] = [
+pub(crate) const APTOS_ACCOUNTS: [&str; 3] = [
     "5e67137f218ca70760ff0a7d792cb4286b5a80fd81c66191d5a0412e161ec0ea", // alice
     "12ebe3e67d11259a82646bffc7caff724ab61e9cbefc2c80df255986351f135c", // bob
     "04228e4f14a6f2f8d202f1bbe151aaadf1105d1fc3c9c0dc1804f5773c34d62b", // eve

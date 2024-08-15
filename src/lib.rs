@@ -2,6 +2,7 @@
 
 use std::sync::LazyLock;
 
+use aptos::APTOS_ACCOUNTS;
 use eyre::{Context, Result};
 use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder, rpc_params};
 use jwt_jsonrpsee::ClientLayer;
@@ -36,13 +37,14 @@ async fn test_deposite() -> Result<()> {
         .build(URL)
         .context("Ошибка при попытки создать клиента для service-engine")?;
 
+    debug!("Получинеие информации о текущем состоянии ноды");
     let response = client
         .request::<Value, _>("engine_l2Info_v1", rpc_params![])
         .await
         .context("запрос на депозит")?;
+    debug!("response: {response:#?}");
 
-    debug!("{}", serde_json::to_string_pretty(&response).unwrap());
-
+    debug!("Запрос с пустым массивом событий");
     client
         .request::<Value, _>(
             "engine_applyAttributes_v1",
@@ -56,6 +58,7 @@ async fn test_deposite() -> Result<()> {
         .context("Пустой массив событий")
         .unwrap();
 
+    debug!("Запрос с пустым массивом событий слота");
     client
         .request::<Value, _>(
             "engine_applyAttributes_v1",
@@ -74,7 +77,8 @@ async fn test_deposite() -> Result<()> {
         .context("Пустой массив событий")
         .unwrap();
 
-    let response = client
+    debug!("Пример запроса через json");
+    let response: Value = client
         .request::<Value, _>(
             "engine_applyAttributes_v1",
             rpc_params!(json!({
@@ -97,7 +101,24 @@ async fn test_deposite() -> Result<()> {
         )
         .await
         .context("запрос на депозит")?;
-    debug!("{}", serde_json::to_string_pretty(&response).unwrap());
+    debug!("response: {response:#?}");
+
+    debug!("Запрос на пополнение нескольких аккаунтов (engine_applyAttributes_v1)");
+    let response: Value = client
+        .request::<Value, _>(
+            "engine_applyAttributes_v1",
+            rpc_params!(RequestEngine::all().await),
+        )
+        .await
+        .context("запрос на депозит")?;
+    debug!("response: {response:#?}");
+
+    debug!("engine_l2Info_v1: request");
+    let response = client
+        .request::<Value, _>("engine_l2Info_v1", rpc_params![])
+        .await
+        .context("запрос на депозит")?;
+    debug!("response: {response:#?}");
 
     Ok(())
 }
@@ -106,13 +127,57 @@ async fn test_deposite() -> Result<()> {
 struct RequestEngine {
     parent_payload: Slot,
     max_payload_size: Slot,
-    events: Vec<RequestDeposit>,
+    events: Vec<RequestSlot>,
+}
+
+impl RequestEngine {
+    async fn all() -> Self {
+        Self {
+            parent_payload: 1,
+            max_payload_size: 1001,
+            events: vec![RequestSlot {
+                slot: next_slot().await,
+                events: vec![
+                    // Alice
+                    RequestEvent::Deposit(TxDeposit {
+                        account: APTOS_ACCOUNTS[0].into(),
+                        amount: 1001,
+                    }),
+                    // Bob
+                    RequestEvent::Deposit(TxDeposit {
+                        account: APTOS_ACCOUNTS[1].into(),
+                        amount: 1002,
+                    }),
+                    // Eve
+                    RequestEvent::Deposit(TxDeposit {
+                        account: APTOS_ACCOUNTS[2].into(),
+                        amount: 1003,
+                    }),
+                    // 0x0
+                    RequestEvent::Deposit(TxDeposit {
+                        account: "0".repeat(64),
+                        amount: 1003,
+                    }),
+                    // 0x1
+                    RequestEvent::Deposit(TxDeposit {
+                        account: format!("{:0>64}", "1"),
+                        amount: 1003,
+                    }),
+                ],
+            }],
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-struct RequestDeposit {
+struct RequestSlot {
     slot: Slot,
-    events: Vec<TxDeposit>,
+    events: Vec<RequestEvent>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+enum RequestEvent {
+    Deposit(TxDeposit),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
