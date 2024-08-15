@@ -1571,6 +1571,7 @@ name = "test_l2"
 version = "0.1.0"
 dependencies = [
  "async-once-cell",
+ "async-trait",
  "eyre",
  "futures",
  "headers",
