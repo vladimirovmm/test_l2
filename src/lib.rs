@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use std::sync::LazyLock;
+use std::{fs, sync::LazyLock};
 
 use aptos::APTOS_ACCOUNTS;
 use eyre::{Context, Result};
@@ -18,14 +18,27 @@ pub(crate) mod aptos;
 pub(crate) mod engine_client;
 pub(crate) mod jwt;
 
-type Slot = usize;
+type Slot = u64;
+const LAST_SLOT_FILE: &str = "last.slot";
 
 pub(crate) const URL: &str = "http://localhost:9042";
-static NEXT_SLOL: LazyLock<Mutex<Slot>> = LazyLock::new(|| Mutex::new(1));
+static NEXT_SLOL: LazyLock<Mutex<Slot>> = LazyLock::new(|| {
+    let last_slot = fs::read_to_string(LAST_SLOT_FILE)
+        .map(|value| {
+            value
+                .parse::<Slot>()
+                .expect("Не валидное значение в {LAST_SLOT_FILE}")
+        })
+        .unwrap_or_default();
+    Mutex::new(last_slot)
+});
 
 async fn next_slot() -> Slot {
     let mut slot = NEXT_SLOL.lock().await;
     *slot += 1;
+    fs::write(LAST_SLOT_FILE, slot.to_string())
+        .with_context(|| format!("Ошибка при записи номера последнего слота {LAST_SLOT_FILE:?}"))
+        .unwrap();
     *slot
 }
 
@@ -114,36 +127,75 @@ impl RequestEngine {
         Self {
             parent_payload: 1,
             max_payload_size: 1001,
-            events: vec![RequestSlot {
-                slot: next_slot().await,
-                events: vec![
-                    // Alice
-                    RequestEvent::Deposit(TxDeposit {
-                        account: APTOS_ACCOUNTS[0].into(),
-                        amount: 1001,
-                    }),
-                    // Bob
-                    RequestEvent::Deposit(TxDeposit {
-                        account: APTOS_ACCOUNTS[1].into(),
-                        amount: 1002,
-                    }),
-                    // Eve
-                    RequestEvent::Deposit(TxDeposit {
-                        account: APTOS_ACCOUNTS[2].into(),
-                        amount: 1003,
-                    }),
-                    // 0x0
-                    RequestEvent::Deposit(TxDeposit {
-                        account: "0".repeat(64),
-                        amount: 1003,
-                    }),
-                    // 0x1
-                    RequestEvent::Deposit(TxDeposit {
-                        account: format!("{:0>64}", "1"),
-                        amount: 1003,
-                    }),
-                ],
-            }],
+            events: vec![
+                RequestSlot {
+                    slot: next_slot().await,
+                    events: vec![
+                        // Alice
+                        RequestEvent::Deposit(TxDeposit {
+                            account: APTOS_ACCOUNTS[0].into(),
+                            amount: 1,
+                        }),
+                        // Bob
+                        RequestEvent::Deposit(TxDeposit {
+                            account: APTOS_ACCOUNTS[1].into(),
+                            amount: 2,
+                        }),
+                        // Eve
+                        RequestEvent::Deposit(TxDeposit {
+                            account: APTOS_ACCOUNTS[2].into(),
+                            amount: 3,
+                        }),
+                    ],
+                },
+                RequestSlot {
+                    slot: next_slot().await,
+                    events: vec![
+                        // Alice
+                        RequestEvent::Deposit(TxDeposit {
+                            account: APTOS_ACCOUNTS[0].into(),
+                            amount: 1,
+                        }),
+                        // Bob
+                        RequestEvent::Deposit(TxDeposit {
+                            account: APTOS_ACCOUNTS[1].into(),
+                            amount: 2,
+                        }),
+                        // Eve
+                        RequestEvent::Deposit(TxDeposit {
+                            account: APTOS_ACCOUNTS[2].into(),
+                            amount: 3,
+                        }),
+                        // Eve
+                        RequestEvent::Deposit(TxDeposit {
+                            account: APTOS_ACCOUNTS[2].into(),
+                            amount: 4,
+                        }),
+                        // 0x0
+                        RequestEvent::Deposit(TxDeposit {
+                            account: "0".repeat(64),
+                            amount: 1004,
+                        }),
+                        // 0x1
+                        RequestEvent::Deposit(TxDeposit {
+                            account: format!("{:0>64}", "1"),
+                            amount: 1005,
+                        }),
+                    ],
+                },
+                RequestSlot {
+                    slot: next_slot().await,
+                    events: (0..100)
+                        .map(|index| {
+                            // Alice
+                            RequestEvent::Deposit(TxDeposit {
+                                account: APTOS_ACCOUNTS[0].into(),
+                                amount: index,
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                },
+            ],
         }
     }
 }
