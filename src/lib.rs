@@ -44,7 +44,40 @@ async fn next_slot() -> Slot {
 
 #[traced_test]
 #[tokio::test]
-async fn test_deposite() -> Result<()> {
+async fn test_deposit_zero() -> Result<()> {
+    let jwt = get_jwt().await;
+    let client = HttpClientBuilder::new()
+        .set_http_middleware(tower::ServiceBuilder::new().layer(ClientLayer::new(jwt)))
+        .build(URL)
+        .context("Ошибка при попытки создать клиента для service-engine")?;
+    let response: Value = client
+        .engine_applyattributes_v1(json!({
+            "parent_payload": 1,
+            "max_payload_size": 1001,
+            "events": [
+                {
+                    "slot": 0,
+                    "events":[
+                        {
+                            "Deposit":{
+                                "account":"0x45",
+                                "amount":1
+                            }
+                        }
+                    ]
+                }
+            ],
+        }))
+        .await
+        .context("запрос на депозит")?;
+    debug!("response: {response:#?}");
+
+    Ok(())
+}
+
+#[traced_test]
+#[tokio::test]
+async fn test_deposit() -> Result<()> {
     let jwt = get_jwt().await;
     let client = HttpClientBuilder::new()
         .set_http_middleware(tower::ServiceBuilder::new().layer(ClientLayer::new(jwt)))
